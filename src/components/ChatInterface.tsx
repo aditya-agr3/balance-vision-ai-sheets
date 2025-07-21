@@ -1,88 +1,134 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send } from "lucide-react";
+import { useState } from 'react'
+import { Company } from '@/types/database'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Card, CardContent } from '@/components/ui/card'
+import { Send, Bot, User } from 'lucide-react'
 
-interface Message {
-  id: number;
-  text: string;
-  isUser: boolean;
-  timestamp: Date;
+interface ChatInterfaceProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  selectedCompany: Company | null
 }
 
-const ChatInterface = () => {
+interface Message {
+  id: string
+  type: 'user' | 'bot'
+  content: string
+  timestamp: Date
+}
+
+export function ChatInterface({ open, onOpenChange, selectedCompany }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
-      id: 1,
-      text: "Hello! I'm your financial assistant. Ask me anything about your company's performance, balance sheets, or financial metrics.",
-      isUser: false,
-      timestamp: new Date(),
-    },
-  ]);
-  const [input, setInput] = useState("");
+      id: '1',
+      type: 'bot',
+      content: `Hello! I'm your financial AI assistant. I can help you analyze ${selectedCompany?.name || 'your company'}'s performance and answer questions about balance sheets, revenue trends, and financial metrics. What would you like to know?`,
+      timestamp: new Date()
+    }
+  ])
+  const [inputValue, setInputValue] = useState('')
+  const [isTyping, setIsTyping] = useState(false)
 
-  const handleSend = () => {
-    if (!input.trim()) return;
+  const handleSendMessage = async () => {
+    if (!inputValue.trim()) return
 
     const userMessage: Message = {
-      id: messages.length + 1,
-      text: input,
-      isUser: true,
-      timestamp: new Date(),
-    };
+      id: Date.now().toString(),
+      type: 'user',
+      content: inputValue,
+      timestamp: new Date()
+    }
 
-    setMessages([...messages, userMessage]);
-    setInput("");
+    setMessages(prev => [...prev, userMessage])
+    setInputValue('')
+    setIsTyping(true)
 
-    // Simulate AI response (placeholder)
+    // Simulate AI response (replace with actual API call)
     setTimeout(() => {
-      const aiResponse: Message = {
-        id: messages.length + 2,
-        text: "I'm processing your question about the financial data. This is a placeholder response - the actual AI backend will analyze your company's balance sheets and provide detailed insights.",
-        isUser: false,
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, aiResponse]);
-    }, 1000);
-  };
+      const botResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'bot',
+        content: `I understand you're asking about "${inputValue}". This is a placeholder response. In a real implementation, this would connect to an AI service that can analyze ${selectedCompany?.name || 'your company'}'s financial data and provide insights about balance sheets, revenue trends, profitability, and other financial metrics. The backend endpoint would process your question and return relevant analysis.`,
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, botResponse])
+      setIsTyping(false)
+    }, 1500)
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSendMessage()
+    }
+  }
 
   return (
-    <div className="flex flex-col h-80">
-      <ScrollArea className="flex-1 p-2">
-        <div className="space-y-3">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.isUser ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`max-w-[80%] rounded-lg p-3 text-sm ${
-                  message.isUser
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted"
-                }`}
-              >
-                {message.text}
-              </div>
-            </div>
-          ))}
-        </div>
-      </ScrollArea>
-      
-      <div className="flex gap-2 p-2 border-t">
-        <Input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask about financial performance..."
-          onKeyPress={(e) => e.key === "Enter" && handleSend()}
-        />
-        <Button size="sm" onClick={handleSend}>
-          <Send className="w-4 h-4" />
-        </Button>
-      </div>
-    </div>
-  );
-};
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl h-[600px] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Financial AI Assistant</DialogTitle>
+          <DialogDescription>
+            Ask questions about {selectedCompany?.name || 'your company'}'s financial performance
+          </DialogDescription>
+        </DialogHeader>
 
-export default ChatInterface;
+        <ScrollArea className="flex-1 pr-4">
+          <div className="space-y-4">
+            {messages.map((message) => (
+              <Card key={message.id} className={`${message.type === 'user' ? 'ml-12' : 'mr-12'}`}>
+                <CardContent className="p-3">
+                  <div className="flex items-start gap-3">
+                    <div className={`p-2 rounded-full ${message.type === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                      {message.type === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm">{message.content}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {message.timestamp.toLocaleTimeString()}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+            
+            {isTyping && (
+              <Card className="mr-12">
+                <CardContent className="p-3">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-full bg-muted">
+                      <Bot className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex gap-1">
+                        <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </ScrollArea>
+
+        <div className="flex gap-2 pt-4">
+          <Input
+            placeholder="Ask about financial performance, trends, or specific metrics..."
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyPress={handleKeyPress}
+            className="flex-1"
+          />
+          <Button onClick={handleSendMessage} disabled={!inputValue.trim() || isTyping}>
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
