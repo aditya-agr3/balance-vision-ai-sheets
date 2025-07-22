@@ -1,8 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LogOut, Upload, MessageCircle } from "lucide-react";
-import FinancialCharts from "./FinancialCharts";
-import ChatInterface from "./ChatInterface";
+import { FinancialCharts } from "./FinancialCharts";
+import { ChatInterface } from "./ChatInterface";
 
 interface DashboardProps {
   userRole: string;
@@ -115,12 +115,16 @@ const Dashboard = ({ userRole, onLogout }: DashboardProps) => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ChatInterface />
+              <ChatInterface 
+                open={false} 
+                onOpenChange={() => {}} 
+                selectedCompany={null} 
+              />
             </CardContent>
           </Card>
         </div>
 
-        <FinancialCharts userRole={userRole} />
+        <FinancialCharts data={[]} />
       </main>
     </div>
   );
