@@ -21,16 +21,16 @@ export default function Dashboard() {
   const [showChat, setShowChat] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
 
-  // Redirect if not authenticated
-  if (!loading && !user) {
-    return <Navigate to="/auth" replace />
-  }
-
   useEffect(() => {
     if (profile) {
       fetchData()
     }
   }, [profile])
+
+  // Redirect if not authenticated
+  if (!loading && !user) {
+    return <Navigate to="/auth" replace />
+  }
 
   const fetchData = async () => {
     setLoadingData(true)
