@@ -5,7 +5,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Card, CardContent } from '@/components/ui/card'
-import { Send, Bot, User } from 'lucide-react'
+import { Send, Bot, User, AlertCircle } from 'lucide-react'
+import { supabase } from '@/integrations/supabase/client'
+import { useAuth } from '@/hooks/useAuth'
+import { useToast } from '@/components/ui/use-toast'
 
 interface ChatInterfaceProps {
   open: boolean
@@ -21,6 +24,8 @@ interface Message {
 }
 
 export function ChatInterface({ open, onOpenChange, selectedCompany }: ChatInterfaceProps) {
+  const { user } = useAuth()
+  const { toast } = useToast()
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -33,7 +38,7 @@ export function ChatInterface({ open, onOpenChange, selectedCompany }: ChatInter
   const [isTyping, setIsTyping] = useState(false)
 
   const handleSendMessage = async () => {
-    if (!inputValue.trim()) return
+    if (!inputValue.trim() || !user) return
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -42,21 +47,62 @@ export function ChatInterface({ open, onOpenChange, selectedCompany }: ChatInter
       timestamp: new Date()
     }
 
+    const currentInput = inputValue
     setMessages(prev => [...prev, userMessage])
     setInputValue('')
     setIsTyping(true)
 
-    // Simulate AI response (replace with actual API call)
-    setTimeout(() => {
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-balance-sheet', {
+        body: {
+          message: currentInput,
+          companyId: selectedCompany?.id,
+          userId: user.id
+        }
+      })
+
+      if (error) {
+        console.error('Error calling AI analysis:', error)
+        throw new Error(error.message || 'Failed to get AI analysis')
+      }
+
+      const aiResponse = data?.response || "I apologize, but I couldn't analyze your request at the moment. Please try again."
+      
       const botResponse: Message = {
         id: (Date.now() + 1).toString(),
         type: 'bot',
-        content: `I understand you're asking about "${inputValue}". This is a placeholder response. In a real implementation, this would connect to an AI service that can analyze ${selectedCompany?.name || 'your company'}'s financial data and provide insights about balance sheets, revenue trends, profitability, and other financial metrics. The backend endpoint would process your question and return relevant analysis.`,
+        content: aiResponse,
         timestamp: new Date()
       }
+      
       setMessages(prev => [...prev, botResponse])
+
+      if (!data?.dataAvailable) {
+        toast({
+          title: "Limited Data",
+          description: "Analysis is based on limited financial data. Upload more balance sheets for better insights.",
+          variant: "default"
+        })
+      }
+
+    } catch (error) {
+      console.error('Error in chat:', error)
+      const errorResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'bot',
+        content: "I apologize, but I'm experiencing technical difficulties. Please try again in a moment.",
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, errorResponse])
+      
+      toast({
+        title: "Error",
+        description: "Failed to get AI analysis. Please try again.",
+        variant: "destructive"
+      })
+    } finally {
       setIsTyping(false)
-    }, 1500)
+    }
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -85,7 +131,7 @@ export function ChatInterface({ open, onOpenChange, selectedCompany }: ChatInter
                       {message.type === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm">{message.content}</p>
+                      <div className="text-sm whitespace-pre-wrap">{message.content}</div>
                       <p className="text-xs text-muted-foreground mt-1">
                         {message.timestamp.toLocaleTimeString()}
                       </p>
